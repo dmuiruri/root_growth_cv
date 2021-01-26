@@ -12,3 +12,8 @@ a key element in the carbon cycle of forested ecosystems. In order to
 monitor tree root growth, The goal of this project is to automatically
 analyse daily root length (and/or root area) in the images and to
 calculate daily root growth.
+
+## Project link
+
+The project is primarily documented
+[here](https://dmuiruri.github.io/root_growth_cv/)
