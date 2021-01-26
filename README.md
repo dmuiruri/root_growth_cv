@@ -1,4 +1,4 @@
-# root_growth_cv
+# Root Growth
 This is a computer vision project involved in modelling root growth
 
 # Description:
