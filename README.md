@@ -13,6 +13,12 @@ monitor tree root growth, The goal of this project is to automatically
 analyse daily root length (and/or root area) in the images and to
 calculate daily root growth.
 
+## Project members: <br/>
+Dennis Muiruri  (GitHub: dmuiruri) <br/>
+Mikko Saukkoriipi  (GitHub: Saukkoriipi) <br/>
+Olga Karmanov  (GitHub: add name) <br/>
+Tapio Koukkari (GitHub: add name) <br/>
+
 ## Project link
 
 The project is primarily documented
