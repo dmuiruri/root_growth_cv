@@ -1,8 +1,11 @@
-#! /usr/bin/env python
+#! /usr/bin/env pythonA
 
 """This script contains helper functions for pre-processing image
 files in a Computer Vision project, sample images can be found in
 sample_images folder.
+
+How to import the module: 
+import preprocessor
 
 """
 import numpy as np
@@ -28,8 +31,17 @@ def pre_process_img(img_file, filter_algo='frangi', sigmas_range=range(1,10,1),
   relevant cmap parameter(cmap.cm.binary_r) for example can be used to
   plot the resulting image.
 
+  Example:
+  img_cv2 = cv2.imread('./<mypath>/mypic.jpeg')
+  img_bin = preprocessor.pre_process_img(img_cv2)
+  fig, ax = plt.subplots()
+  ax.imshow(img_bin, cmap=plt.cm.binary_r)
+  plt.show()
+
   """
   # pick an image
+  if (type(img_file) != np.ndarray):
+      raise TypeError('img file type should be a numpy ndarray')
   img_file = img_file[600:3000, 200:4400] # trim scanner edges
   img_trimmed = color.rgb2gray(img_file)
   img_rescaled = rescale(img_trimmed, 0.25, anti_aliasing=False)
@@ -75,20 +87,17 @@ if __name__ == '__main__':
     bin_imgs = list()
     orig_imgs = listdir(dir_path)
 
-    fig, ax = plt.subplots(len(orig_imgs)-1, 2, figsize=(10, 5))
+    fig, ax = plt.subplots(len(orig_imgs)-1, 2, figsize=(5, 5))
+    # fig.subplots_adjust(hspace=0.05, wspace=0.025)
     for i, f in enumerate(orig_imgs):
         if f.endswith('.jpg'):
             orig_img = io.imread(dir_path+f)
             print(dir_path+f)
             bin_img = pre_process_img(orig_img)
-            # _ = ax[i] = np.hstack((orig_img[600:3000, 200:4400], bin_img))
-            # ax[i,0].set_title(fname[0] + '_' + fname[-2], fontsize=10)
             _ = ax[i,0].imshow(orig_img)
             _ = ax[i,1].imshow(bin_img, cmap=plt.cm.binary_r)
             fname = f.split('_')
-            ax[i,0].set_title(fname[0] + '_' + fname[-2] + '_orig', fontsize=10)
-            ax[i,1].set_title(fname[0] + '_' + fname[-2] + '_bin', fontsize=10)
-    # for i, (orig_img, bin_img) in enumerate(zip(orig_imgs, bin_imgs)):
-    #     print(orig_img.shape, bin_img.shape)
+            ax[i,0].set_title(fname[0] + '_' + fname[-2] + '_orig', fontsize=5)
+            ax[i,1].set_title(fname[0] + '_' + fname[-2] + '_bin', fontsize=5)
     fig.tight_layout()
     plt.show()
