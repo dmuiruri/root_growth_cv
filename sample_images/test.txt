@@ -1,0 +1,2 @@
+None image file
+should not be loaded
