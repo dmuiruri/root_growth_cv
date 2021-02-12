@@ -76,7 +76,7 @@ def pre_process_img(img_file, filter_algo='frangi', sigmas_range=range(1,10,1),
   img_bin = img_ridges > thresh
 
   # remove small objects
-  img_cleaned = remove_small_objects(img_bin, min_size=370)
+  img_cleaned = remove_small_objects(img_bin, min_size=min_size)
 
   return img_cleaned
 
