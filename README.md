@@ -16,7 +16,7 @@ calculate daily root growth.
 ## Project members: <br/>
 Dennis Muiruri  (GitHub: dmuiruri) <br/>
 Mikko Saukkoriipi  (GitHub: Saukkoriipi) <br/>
-Olga Karmanov  (GitHub: add name) <br/>
+Olga Karmanov  (GitHub: cubasja) <br/>
 Tapio Koukkari (GitHub: add name) <br/>
 
 ## Project link
