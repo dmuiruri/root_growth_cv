@@ -1,3 +1,4 @@
+# Import libraries
 import os
 import itertools
 import pickle
@@ -7,8 +8,14 @@ from pathlib import Path
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader, Sampler
 
-import paired_transforms_pt04 as p_tr
+# Import paired_transforms
+import paired_transforms as p_tr
 
+# Define paths
+train_images_masks_dir = '../data/train_images_and_masks'
+info_dir = '../data/info.pkl'
+
+# Train images transforms
 train_transform = p_tr.Compose([
     p_tr.RandomCrop(256),
     p_tr.RandomRotation((90, 90)),
@@ -19,8 +26,7 @@ train_transform = p_tr.Compose([
     p_tr.ToTensor()
 ])
 
-# normalize = p_tr.Normalize([0.35042979, 0.44016893, 0.2340332],
-#                            [0.20999724, 0.25972678, 0.13885915])
+# Normalize
 normalize = p_tr.Normalize([0.5, 0.5, 0.5],
                            [0.5, 0.5, 0.5])
 
@@ -33,14 +39,6 @@ def pad_pair_256(image, gt):
     new_image.paste(image, ((new_w - w) // 2, (new_h - h) // 2))
     new_gt = Image.new("L", (new_w, new_h))
     new_gt.paste(gt, ((new_w - w) // 2, (new_h - h) // 2))
-    return new_image, new_gt
-
-
-def convert_png(image, gt):
-    new_image = Image.new('RGB', (256, 256))
-    new_image.paste(image)
-    new_gt = Image.new('L', (256, 256))
-    new_gt.paste(gt)
     return new_image, new_gt
 
 
@@ -75,32 +73,25 @@ class TrainDataLoader():
         image, gt = next(self.dl)
         return image, gt
 
-
-
 class TrainDataset(Dataset):
+    # Load paths
     def __init__(self, im_ids):
-        self.root_dir = '../data/train_images_and_masks'
-        self.mask_dir = '../data/train_images_and_masks'
+        self.train_dir = train_images_masks_dir
         self.im_ids = im_ids
-        with open('../data/info.pkl', 'rb') as handle:
+        with open(info_dir, 'rb') as handle:
             self.info = pickle.load(handle)
         self.fns = [self.info[im_id] for im_id in im_ids]
 
+    # Get images and masks
     def __getitem__(self, index):
         im_fn = self.fns[index]
-        im_name = os.path.join(self.root_dir, im_fn)
-        gt_name = os.path.join(
-            self.mask_dir, im_fn.split('.jpg')[0] + '-mask.jpg')
-
-        print(im_name)
-        print(gt_name)
+        im_name = os.path.join(self.train_dir, im_fn)
+        gt_name = os.path.join(self.train_dir, im_fn.split('.jpg')[0] + '-mask.jpg')
         image = Image.open(im_name)
         gt = Image.open(gt_name)
         image, gt = pad_pair_256(image, gt)
-
         image, gt = train_transform(image, gt)
         image = normalize(image)
-
         return image, gt
 
     def __len__(self):
@@ -109,25 +100,21 @@ class TrainDataset(Dataset):
 
 class ValDataset(Dataset):
     def __init__(self, im_ids):
-        self.root_dir = '../data/val_images_and_masks'
-        self.mask_dir = '../data/val_images_and_masks'
+        self.val_dir = train_images_masks_dir
         self.im_ids = im_ids
-        with open('../data/info.pkl', 'rb') as handle:
+        with open(info_dir, 'rb') as handle:
             self.info = pickle.load(handle)
         self.fns = [self.info[im_id] for im_id in im_ids]
 
     def __getitem__(self, index):
         im_fn = self.fns[index]
-        im_name = os.path.join(self.root_dir, im_fn)
-        gt_name = os.path.join(
-            self.mask_dir, im_fn.split('.jpg')[0] + '-mask.jpg')
+        im_name = os.path.join(self.val_dir, im_fn)
+        gt_name = os.path.join(self.val_dir, im_fn.split('.jpg')[0] + '-mask.jpg')
         image = Image.open(im_name)
         gt = Image.open(gt_name)
         image, gt = pad_pair_256(image, gt)
-
         image, gt = train_transform(image, gt)
         image = normalize(image)
-
         return image, gt
 
     def __len__(self):
@@ -136,22 +123,19 @@ class ValDataset(Dataset):
 
 class TestDataset(Dataset):
     def __init__(self, im_ids):
-        self.root_dir = '../data/test_images_and_masks'
-        self.mask_dir = '../data/test_images_and_masks'
-        with open('../data/info.pkl', 'rb') as handle:
+        self.test_dir = train_images_masks_dir
+        with open(info_dir, 'rb') as handle:
             self.info = pickle.load(handle)
         self.im_ids = im_ids
         self.fns = [self.info[im_id] for im_id in im_ids]
 
     def __getitem__(self, index):
         im_fn = self.fns[index]
-        im_name = os.path.join(self.root_dir, im_fn)
-        gt_name = os.path.join(
-                self.mask_dir, im_fn.split('.jpg')[0] + '-mask.jpg')
+        im_name = os.path.join(self.test_dir, im_fn)
+        gt_name = os.path.join(self.test_dir, im_fn.split('.jpg')[0] + '-mask.jpg')
         image = Image.open(im_name)
         gt = Image.open(gt_name)
         image, gt = pad_pair_256(image, gt)
-
         image, gt = p_tr.ToTensor()(image, gt)
         image = normalize(image)
         return image, gt

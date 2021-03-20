@@ -6,88 +6,126 @@ import torchvision
 from skimage.morphology import erosion
 import matplotlib.pyplot as plt
 import time
+from torchvision.transforms import functional as F
 
-# Import scripts
-from dataloader import pad_pair_256, normalize
-from model import SegRoot
+# Import model
+from model import SegNet
 
-# Initialize paths and parameters
-weights_path = "../weights/best_segnet-(8,5).pt" # Path to trained model weights
-width=8 # Width of SegRoot
-depth=5 # Depth of SegRoot
-threshold=0.9 # threshold of the final binarization
+# Set thershold
+threshold=0.9 # threshold of the final binarization. Required because of erosion.
+
+# Define paths
+weights_path = "../weights/trained_segnet_weights.pt" # Path to trained model weights
 read_dir = Path("../data/prediction_data") # Directory to test data
 result_dir = "../data/prediction_result" # Directory to test data
 
+# Image normalization
+class Normalize(object):
+    """Normalize a tensor image with mean and standard deviation.
+    Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
+    will normalize each channel of the input ``torch.*Tensor`` i.e.
+    ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
+    Args:
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
+    """
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized Tensor image.
+        """
+        return F.normalize(tensor, self.mean, self.std)
+
+# Pad width and size to be dividable by 16
 def pad_256(img_path):
     image = Image.open(img_path)
     W, H = image.size
-    img, _ = pad_pair_256(image, image)
-    NW, NH = img.size
-    img = torchvision.transforms.ToTensor()(img)
-    img = normalize(img)
-    return img, (H, W, NH, NW)
+    new_w = ((W - 1) // 256 + 1) * 256
+    new_h = ((H - 1) // 256 + 1) * 256
+    new_img = Image.new("RGB", (new_w, new_h))
+    new_img.paste(image, ((new_w - W) // 2, (new_h - H) // 2))
+    NW, NH = new_img.size
+    new_img = torchvision.transforms.ToTensor()(new_img)
+    normalize = Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    new_img = normalize(new_img)
+    return new_img, (H, W, NH, NW)
 
-# Predict
+# Make prediction
 def predict(model, test_img, device):
-    # For testing do not use gradient
+    # Desable gradient saving
     for p in model.parameters():
         p.requires_grad = False
+    # Set model to eval mode
     model.eval()
-    # test_img.shape = (3, 2304, 2560)
+    # Unsqueeze image. Test_img.shape = (3, 2304, 2560).
     test_img = test_img.unsqueeze(0)
+    # make prediction
     output = model(test_img)
-    # output.shape = (1, 1, 2304, 2560)
+    # Squeeze back the image. Output.shape = (1, 1, 2304, 2560).
     output = torch.squeeze(output)
+    # Empty cuda caches. May be useless.
     torch.cuda.empty_cache()
     return output
 
-
+# Prediction main function
 def predict_gen(model, img_path, thres, device, result_dir):
-    # Get img dimensions
+    # Create padded image
     img, dims = pad_256(img_path)
-    H, W, NH, NW = dims
-    # Img to device and predict
+    # Get padded and original image sizes
+    height, width, padded_height, padded_width = dims
+    # padded image to device
     img = img.to(device)
+    # Make prediction
     prediction = predict(model, img, device)
     # Threshold prediction to make it binary
     prediction[prediction >= thres] = 1.0
     prediction[prediction < thres] = 0.0
+    # Do not require grad
     if device.type == "cpu":
         prediction = prediction.detach().numpy()
     else:
         prediction = prediction.cpu().detach().numpy()
+    # Run erosion to prediction image
     prediction = erosion(prediction)
-    # reverse padding
+    # Remove padding
     prediction = prediction[
-        (NH - H) // 2 : (NH - H) // 2 + H, (NW - W) // 2 : (NW - W) // 2 + W
+        (padded_height - height) // 2 : (padded_height - height) // 2 + height, 
+        (padded_width - width) // 2 : (padded_width - width) // 2 + width
     ]
-
     # Set prediction image name and path
     new_file_name = img_path.parts[-1].split(".jpg")[0] + "-prediction.jpg"
     save_dir = result_dir + "/" + new_file_name
-
     # Save prediction image
     plt.imsave(save_dir, prediction, cmap="gray")
+    # Print saved image name and info that generation has completed
     print("{} generated!".format(new_file_name))
 
-
+# The main
 if __name__ == "__main__":
     # If available, use GPU, otherwise use CPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = SegRoot(8, 5).to(device)
+    # Model to device
+    model = SegNet(8, 5).to(device)
+    # Load trained model weights
     if device.type == "cpu":
         print("No Cuda available, will use CPU")
         model.load_state_dict(torch.load(weights_path, map_location="cpu"))
     else:
-        print("Use Cuda CPU")
+        print("Use Cuda GPU")
         model.load_state_dict(torch.load(weights_path))
-
-    # Predict images
+    # Get image paths
     img_paths = read_dir.glob("*.jpg")
+
+    # Loop image paths and make predictions
     for img_path in img_paths:
-        start_time = time.time()
+        start_time = time.time() # Start timer
         predict_gen(model, img_path, threshold, device, result_dir)
-        end_time = time.time()
-        print("{:.4f}s for one image".format(end_time - start_time))
+        end_time = time.time() # End timer
+        print("{:.4f}s for one image".format(end_time - start_time)) # Print time result
 
