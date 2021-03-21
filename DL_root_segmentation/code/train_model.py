@@ -10,6 +10,7 @@ import random
 import logging
 import numpy as np
 import json
+import torch.nn as nn
 from pathlib import Path
 
 from model import SegNet
@@ -18,15 +19,16 @@ from dataloader import TestDataset, TrainDataset, ValDataset, LoopSampler
 # Initialize parameters
 #dataset_length = 18
 seed = 42 # Random seed
-bs = 20 # Batch size
-lr = 0.01 # Learning rate
-epochs = 2 # Max number of epochs
-verbose = 1 # Interval to save and validate model
-num_workers = 12 # Number of workers
+bs = 31 # Batch size
+lr = 0.05 # Learning rate
+epochs = 200 # Max number of epochs
+verbose = 2 # Interval to save and validate model
+num_workers = 10 # Number of workers
 
 # Define paths
 pretrained_weights_dir = "../weights/pretrained_segroot_weights.pt"
 output_weights_dir = "../weights/trained_segnet_weights.pt"
+model_dir = "../weights/pretrained_segnet.pth"
 images_dir = Path('../data/train_images_and_masks')
 
 def set_random_seed(seed):
@@ -60,7 +62,6 @@ def dice_score(y, y_pred, smooth=1.0, thres=0.9):
 def init_weights(m):
     if isinstance(m, torch.nn.Conv2d):
         torch.nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
-        # torch.nn.init.constant_(m.bias, 0)
     elif isinstance(m, torch.nn.BatchNorm2d):
         torch.nn.init.constant_(m.weight, 1)
 
@@ -87,10 +88,10 @@ def train_one_epoch(model, train_iter, optimizer, device):
     model.train()
     for p in model.parameters():
         p.requires_grad = True
-    iter = 0
+    #iter = 0
     for x, y in train_iter:
-        print("Iteration:", iter)
-        iter = iter+1
+       # print("Iteration:", iter)
+       # iter = iter+1
         x, y = x.to(device), y.to(device)
         batch_size = x.shape[0]
         optimizer.zero_grad()
@@ -125,7 +126,7 @@ if __name__ == "__main__":
     # Create images index file. Used in data reading and to make train-val-test split.
     dataset_length = create_images_index_pikle_file(images_dir)
     # Set random seed. Remove after everything works!
-    set_random_seed(seed)
+    #set_random_seed(seed)
     # Define the device for training
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # Make train, val, test split
@@ -150,7 +151,11 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(pretrained_weights_dir, map_location="cpu"))
     else:
         print("Lead pretrained weights to Cuda GPU")
-        model.load_state_dict(torch.load(pretrained_weights_dir))
+        checkpoint = torch.load(model_dir)
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        model.load_state_dict(checkpoint['state_dict'])
+        print("Lataaminen onnistui!!")
+       # model.load_state_dict(torch.load(pretrained_weights_dir))
     # Train the model
     print(f"\nStart training SegNet model......")
     print(f"Random seed is {seed}, batch size is {bs}......")
@@ -172,4 +177,8 @@ if __name__ == "__main__":
                 best_valid = valid_dice
                 test_dice = evaluate(model, test_tdata, device)
                 print("New best result, test dice: {:.4f}".format(test_dice))
+                # Save weights used in prediction
                 torch.save(model.state_dict(), output_weights_dir)
+                # Save model and weights used in further training
+                state = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}
+                torch.save(state, model_dir)

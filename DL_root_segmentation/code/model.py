@@ -49,8 +49,7 @@ class Decoder(nn.Module):
 class SegNet(nn.Module):
     # Remove width, depth and num_class parameters. They are not used.
     def __init__(self, width=8, depth=5, num_classes=2):
-        super(SegNet, self).__init__()
-        # Convolution channels
+        super(SegNet, self).__init__()        # Convolution channels
         chs = [8, 16, 32, 64, 64]
         # Encoder channels
         self.e_ch_info = [3,] + chs
@@ -61,7 +60,6 @@ class SegNet(nn.Module):
         self.d_bl_info = self.e_bl_info[::-1]
         # Numclasses and create modulelists
         # Module list holds models sub modules in a list
-        self.num_classes = 2
         self.encoders = nn.ModuleList()
         self.decoders = nn.ModuleList()
         # Add modules to encoder and decoder lists
