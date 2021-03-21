@@ -18,6 +18,39 @@ from skimage import exposure, color, filters, io
 from skimage.transform import rescale, resize, downscale_local_mean
 from os import listdir
 
+def find_original_images():
+  """Find the original images matching images that have been traced.
+
+  Walks through the folder of traced images and finding the counter
+  part of the original image.  The date string in the file is used to
+  identify matching images.
+
+  """
+  for scanner in scanners:
+    s = scanner.replace('_', ' ').lower()
+    print(f'Scanner: {s}')
+    for folder in os.listdir(training_data_loc):
+      if s == folder.lower():
+        # find originals and copy to training folder
+        orig_loc = f'{orig_data_loc}{scanner}/{scanner}'
+        train_loc = f'{training_data_loc}{folder}'
+        print(f'{orig_loc}: images {len(list(os.walk(orig_loc))[0][2])}')
+        print(f'{train_loc}: images {len(list(os.walk(train_loc))[0][2])}')
+        for img in list(os.walk(train_loc))[0][2]:
+          # pick files in top level dir, avoid nested dirs
+          imgs_in_orig_folder = [i.split('_')[3] for i in os.listdir((f'{orig_data_loc}{scanner}/{scanner}'))]
+          img_ = img.replace('.bmp', '').split(' ')[0]
+          if img_ in imgs_in_orig_folder:
+            print(f'image found: {img}')
+            o_img = f'*{img_}*.jpg'
+            src = glob.glob(f'{orig_loc}/{o_img}')[0]
+            dst = img.replace('.bmp', '_orig.jpg')
+            copyfile(src, f'{train_loc}/orig_imgs/{dst}')
+          else:
+            print(f'image not found {img}')
+  print('Completed copying images')
+  return
+
 def pre_process_img(img_file, filter_algo='frangi', sigmas_range=range(1,10,1),
                     min_size=300, alpha=0.5, beta=0.5, gamma=5, mode='reflect'):
   """Pre-process images.
