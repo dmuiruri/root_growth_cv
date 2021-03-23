@@ -25,7 +25,13 @@ def find_original_images():
   part of the original image.  The date string in the file is used to
   identify matching images.
 
+  Change paths to reflect directory structure
   """
+  scanners = ['Hyde_Scanner1', 'Hyde_Scanner2', 'Hyde_Scanner3', 'Varrio_Scanner2','Varrio_Scanner3']
+  training_data_loc =  'drive/MyDrive/root_growth_data/Root_Project/training_images/'
+  orig_data_loc = 'drive/MyDrive/root_growth_data/'
+
+
   for scanner in scanners:
     s = scanner.replace('_', ' ').lower()
     print(f'Scanner: {s}')
