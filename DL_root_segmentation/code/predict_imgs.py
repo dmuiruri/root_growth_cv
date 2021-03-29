@@ -52,7 +52,7 @@ def pad_256(img_path):
     new_img.paste(image, ((new_w - W) // 2, (new_h - H) // 2))
     NW, NH = new_img.size
     new_img = torchvision.transforms.ToTensor()(new_img)
-    normalize = Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    normalize = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     new_img = normalize(new_img)
     return new_img, (H, W, NH, NW)
 
@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     # Loop image paths and make predictions
     for img_path in img_paths:
-        start_time = time.time() # Start timer
+        #start_time = time.time() # Start timer
         predict_gen(model, img_path, threshold, device, result_dir)
-        end_time = time.time() # End timer
-        print("{:.4f}s for one image".format(end_time - start_time)) # Print time result
+        #end_time = time.time() # End timer
+        #print("{:.4f}s for one image".format(end_time - start_time)) # Print time result
 
