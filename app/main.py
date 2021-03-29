@@ -6,15 +6,17 @@ from os import environ
 from root_growth_gui import (RootGrowthGUI, mock_model_run)
 
 DEFAULTS = {
-    'DEFAULT_INPUT': './images/',
-    'DEFAULT_OUTPUT': './results.csv'
+    'INPUT': './images/',
+    'OUTPUT': './results.csv',
+    'OUTPUT_IMG': './imagedata/'
 }
 
 class AppController():
     def __init__(self):
         self.arg_parser = argparse.ArgumentParser()
-        default_in = DEFAULTS['DEFAULT_INPUT']
-        default_out = DEFAULTS['DEFAULT_OUTPUT']
+        default_in = DEFAULTS['INPUT']
+        default_out = DEFAULTS['OUTPUT']
+        default_out_img = DEFAULTS['OUTPUT_IMG']
         self.arg_parser.add_argument(
             '--cli',
             dest='use_cli',
@@ -35,14 +37,20 @@ class AppController():
             type=str,
             help=f'Set path for results output. Default: {default_out}'
         )
+        self.arg_parser.add_argument(
+            '--out-images',
+            dest='outimg',
+            default=default_out_img,
+            type=str,
+            help=f'Set directory for processed images. Default: {default_out_img}'
+        )
 
     def run(self):
         args = self.arg_parser.parse_args()
         if args.use_cli:
             mock_model_run(args.input, args.output)
         else:
-            app = RootGrowthGUI(DEFAULTS)
-            app.run()
+            RootGrowthGUI(DEFAULTS)
 
 
 if __name__ == '__main__':
