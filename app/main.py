@@ -48,7 +48,7 @@ class AppController():
     def run(self):
         args = self.arg_parser.parse_args()
         if args.use_cli:
-            mock_model_run(args.input, args.output)
+            mock_model_run(args.input, args.output, args.outimg)
         else:
             RootGrowthGUI(DEFAULTS)
 
