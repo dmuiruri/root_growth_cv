@@ -20,7 +20,7 @@ from dataloader import TestDataset, TrainDataset, ValDataset, LoopSampler
 #dataset_length = 18
 seed = 42 # Random seed
 bs = 31 # Batch size
-lr = 0.05 # Learning rate
+lr = 0.01 # Learning rate
 epochs = 200 # Max number of epochs
 verbose = 2 # Interval to save and validate model
 num_workers = 10 # Number of workers
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     else:
         print("Lead pretrained weights to Cuda GPU")
         checkpoint = torch.load(model_dir)
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        #optimizer.load_state_dict(checkpoint['optimizer'])
         model.load_state_dict(checkpoint['state_dict'])
         print("Lataaminen onnistui!!")
        # model.load_state_dict(torch.load(pretrained_weights_dir))
