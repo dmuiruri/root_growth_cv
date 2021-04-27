@@ -1,7 +1,6 @@
-from os import (
-    getcwd,
-    path
-)
+import os
+import logging
+from time import sleep
 from guizero import (
     App,
     Box,
@@ -10,25 +9,32 @@ from guizero import (
     PushButton,
     select_folder
 )
+from DL_model.predict_imgs import DLModel
 
-def mock_model_run(input_path, output_path, output_images):
+def pipeline_run(input_path, output_images, results_path):
     """
-    This is a placeholder function
+    Make image segmentation and compute root tip growth, save results.
     """
-    if not path.exists(input_path):
+    if not os.path.exists(input_path):
         raise ValueError(f"Input path is invalid! Directory {input_path} does not exist")
-    for i in range(5):
-        logging.info(f'Running model... {(i+1)*20}%')
-    with open(output_path, 'w') as out:
-        logging.info(f"Writing results to {output_path}")
-        out.write('RESULTS\n')
+    if not os.path.exists(output_images):
+        os.mkdir(output_images)
+    if os.listdir(output_images):
+        logging.warning('Folder for processed images is not empty and any duplicate images will be overwritten. Use CTRL-C to abort.')
+        sleep(5)
+    DLModel().apply_dl_model(input_path, output_images)
+    #for i in range(5):
+    #    logging.info(f'Running model... {(i+1)*20}%')
+    with open(results_path, 'w') as out:
+        logging.info(f"Writing results to {results_path}")
+        out.write('RESULTS\n') # TODO
 
 class RootGrowthGUI():
 
     def __init__(self, defaults):
         self.app = App('Root image analyzer', width=700, height=300, layout='grid')
 
-        self.cwd = getcwd()
+        self.cwd = os.getcwd()
         self.input_path = defaults['INPUT']
         self.output_dir_path = defaults['OUTPUT_IMG']
 
@@ -57,7 +63,7 @@ class RootGrowthGUI():
 
     def start_model(self):
         output = self.output_file_box.value
-        mock_model_run(self.input_path, output, self.output_dir_path)
+        pipeline_run(self.input_path, self.output_dir_path, output)
 
     def exit(self):
         self.app.destroy()

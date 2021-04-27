@@ -3,7 +3,7 @@ import logging
 from sys import argv
 from os import environ
 
-from root_growth_gui import (RootGrowthGUI, mock_model_run)
+from root_growth_gui import (RootGrowthGUI, pipeline_run)
 
 DEFAULTS = {
     'INPUT': './images/',
@@ -48,7 +48,7 @@ class AppController():
     def run(self):
         args = self.arg_parser.parse_args()
         if args.use_cli:
-            mock_model_run(args.input, args.output, args.outimg)
+            pipeline_run(args.input, args.outimg, args.output)
         else:
             RootGrowthGUI(DEFAULTS)
 
