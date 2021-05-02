@@ -125,7 +125,7 @@ class DLModel():
         logging.info("{} generated!".format(new_file_name))
 
     # The main
-    def apply_dl_model(self, read_dir, result_dir):
+    def apply_dl_model(self, read_dir, result_dir, exit_flag=None):
         read_dir = Path(read_dir)
         # If available, use GPU, otherwise use CPU
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -143,4 +143,7 @@ class DLModel():
 
         # Loop image paths and make predictions
         for img_path in img_paths:
+            if exit_flag and exit_flag.is_set():
+                logging.info("Received exit signal, terminating run")
+                return
             self.predict_gen(model, img_path, self.threshold, device, result_dir)

@@ -1,6 +1,10 @@
 import os
 import logging
 from time import sleep
+from threading import (
+    Thread,
+    Event
+)
 from guizero import (
     App,
     Box,
@@ -11,7 +15,7 @@ from guizero import (
 )
 from DL_model.predict_imgs import DLModel
 
-def pipeline_run(input_path, output_images, results_path):
+def pipeline_run(input_path, output_images, results_path, exit_flag=None):
     """
     Make image segmentation and compute root tip growth, save results.
     """
@@ -22,14 +26,17 @@ def pipeline_run(input_path, output_images, results_path):
     if os.listdir(output_images):
         logging.warning('Folder for processed images is not empty and any duplicate images will be overwritten. Use CTRL-C to abort.')
         sleep(5)
-    DLModel().apply_dl_model(input_path, output_images)
-    #for i in range(5):
-    #    logging.info(f'Running model... {(i+1)*20}%')
+    DLModel().apply_dl_model(input_path, output_images, exit_flag)
+
+    if exit_flag and exit_flag.is_set():
+        return
     with open(results_path, 'w') as out:
         logging.info(f"Writing results to {results_path}")
         out.write('RESULTS\n') # TODO
 
 class RootGrowthGUI():
+    thread = None
+    exit_flag = Event()
 
     def __init__(self, defaults):
         self.app = App('Root image analyzer', width=700, height=300, layout='grid')
@@ -62,8 +69,12 @@ class RootGrowthGUI():
         self.output_dir_text = Text(self.app, text=self.output_dir_path, grid=[2,2])
 
     def start_model(self):
+        if self.thread and self.thread.is_active():
+            return
         output = self.output_file_box.value
-        pipeline_run(self.input_path, self.output_dir_path, output)
+        self.thread = Thread(target=pipeline_run, args=(self.input_path, self.output_dir_path, output, self.exit_flag))
+        self.thread.start()
 
     def exit(self):
+        self.exit_flag.set()
         self.app.destroy()
