@@ -1,54 +1,80 @@
+import os
 import logging
-from os import path
-from appJar import gui
+from time import sleep
+from threading import (
+    Thread,
+    Event
+)
+from guizero import (
+    App,
+    Box,
+    Text,
+    TextBox,
+    PushButton,
+    select_folder
+)
+from DL_model.predict_imgs import DLModel
 
-LABELS = {
-    'in_dir': 'Input directory',
-    'out_file': 'Output file',
-    'start_button': 'Run model',
-    'exit_button': 'Exit'
-}
-
-def mock_model_run(input_path, output_path):
+def pipeline_run(input_path, output_images, results_path, exit_flag=None):
     """
-    This is a placeholder function
+    Make image segmentation and compute root tip growth, save results.
     """
-    if not path.exists(input_path):
+    if not os.path.exists(input_path):
         raise ValueError(f"Input path is invalid! Directory {input_path} does not exist")
-    for i in range(5):
-        logging.info(f'Running model... {(i+1)*20}%')
-    with open(output_path, 'w') as out:
-        logging.info(f"Writing results to {output_path}")
-        out.write('RESULTS\n')
+    if not os.path.exists(output_images):
+        os.mkdir(output_images)
+    if os.listdir(output_images):
+        logging.warning('Folder for processed images is not empty and any duplicate images will be overwritten. Use CTRL-C to abort.')
+        sleep(5)
+    DLModel().apply_dl_model(input_path, output_images, exit_flag)
 
+    if exit_flag and exit_flag.is_set():
+        return
+    with open(results_path, 'w') as out:
+        logging.info(f"Writing results to {results_path}")
+        out.write('RESULTS\n') # TODO
 
 class RootGrowthGUI():
+    thread = None
+    exit_flag = Event()
+
     def __init__(self, defaults):
-        self.defaults = defaults
+        self.app = App('Root image analyzer', width=700, height=300, layout='grid')
 
-        self.app = gui()
-        self.app.addDirectoryEntry(LABELS['in_dir'])
+        self.cwd = os.getcwd()
+        self.input_path = defaults['INPUT']
+        self.output_dir_path = defaults['OUTPUT_IMG']
 
-        self.app.addLabelEntry(LABELS['out_file'])
-        default_out = defaults['DEFAULT_OUTPUT'].strip('./')
-        self.app.setEntryDefault(LABELS['out_file'], f'{default_out}')
+        Text(self.app, text='Select image folder', grid=[0,0], align='left')
+        input_button = PushButton(self.app, command=self.choose_input, text='Choose', grid=[1,0], align='left')
+        self.input_path_text = Text(self.app, text=self.input_path, grid=[2,0])
 
-        self.app.addButton(LABELS['start_button'], self.start_model)
-        self.app.addButton(LABELS['exit_button'], self.exit)
+        Text(self.app, text='Name output file', grid=[0,1], align='left')
+        self.output_file_box = TextBox(self.app, text=defaults['OUTPUT'].strip('./'), grid=[1,1], align='left')
+        Text(self.app, text='Choose directory for processed images', grid=[0,2], align='left')
+        output_dir_button = PushButton(self.app, command=self.choose_out_dir, text='Choose', grid=[1,2], align='left')
+        self.output_dir_text = Text(self.app, text=self.output_dir_path, grid=[2,2])
+
+        start_button = PushButton(self.app, command=self.start_model, text='Start', grid=[1,4], align='left')
+        exit_button = PushButton(self.app, command=self.exit, text='Exit', grid=[2,4], align='left')
+
+        self.app.display()
+
+    def choose_input(self):
+        self.input_path = select_folder(title='Select folder', folder=self.cwd)
+        self.input_path_text = Text(self.app, text=self.input_path, grid=[2,0])
+
+    def choose_out_dir(self):
+        self.output_dir_path = select_folder(title='Select folder', folder=self.cwd)
+        self.output_dir_text = Text(self.app, text=self.output_dir_path, grid=[2,2])
 
     def start_model(self):
-        input_path = self.app.entry(LABELS['in_dir'])
-        if not input_path:
-            input_path = self.defaults['DEFAULT_INPUT']
-
-        output_path = self.app.entry(LABELS['out_file'])
-        if not output_path:
-            output_path = self.defaults['DEFAULT_OUTPUT']
-
-        mock_model_run(input_path, output_path)
+        if self.thread and self.thread.is_active():
+            return
+        output = self.output_file_box.value
+        self.thread = Thread(target=pipeline_run, args=(self.input_path, self.output_dir_path, output, self.exit_flag))
+        self.thread.start()
 
     def exit(self):
-        self.app.stop()
-
-    def run(self):
-        self.app.go()
+        self.exit_flag.set()
+        self.app.destroy()
