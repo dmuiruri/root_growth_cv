@@ -8,7 +8,7 @@ from root_growth_gui import (RootGrowthGUI, pipeline_run)
 DEFAULTS = {
     'INPUT': './images/',
     'OUTPUT': './results.csv',
-    'OUTPUT_IMG': './imagedata/'
+    'TIP_SIZE': '10'
 }
 
 class AppController():
@@ -16,7 +16,7 @@ class AppController():
         self.arg_parser = argparse.ArgumentParser()
         default_in = DEFAULTS['INPUT']
         default_out = DEFAULTS['OUTPUT']
-        default_out_img = DEFAULTS['OUTPUT_IMG']
+        default_out_img = f'{default_in.strip("/").split("/")[-1]}--processed/'
         self.arg_parser.add_argument(
             '--cli',
             dest='use_cli',
