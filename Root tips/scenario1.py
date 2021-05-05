@@ -29,7 +29,6 @@ def main(im_s, im_o, tip_size):
 
     # Process original color image for visualization
     im_original = processImage(im_o)
-    cv2.imwrite('RESIZED color.png', im_original)
 
     # Calculate binary image colors, if roots exist it should be 2
     unique, counts = np.unique(im_binary, return_counts=True)
@@ -54,7 +53,7 @@ def main(im_s, im_o, tip_size):
             add_Text(im_original, list(image_df['(X,Y) coordinates']), list(image_df['Radius']), color)
 
             # Generate csv-file
-            csv_file = im_s.split('.')[0] + '.csv'
+            csv_file = 'OPTION 0_TEST.csv'
 
             # Reindex dataframe 
             index_list = range(1,len(im_COORDINATES)+1)
@@ -63,9 +62,8 @@ def main(im_s, im_o, tip_size):
             image_df[['Image','(X,Y) coordinates', 'ImageID', 'Tip length, mm']].to_csv(csv_file, sep=';', index=False, float_format='%.1f')
 
             # Save processed image
-            png_file = im_s.split('-')[0] + '.png'
-            cv2.imwrite(png_file, im_original)
-            cv2.imwrite('im_binary.png', im_binary)
+            # png_file = im_s.split('-')[0] + '.png'
+            cv2.imwrite('OPTION 0_TEST.png', im_original)
             print(f'Image with identified root tips is created, number of roots: {len(im_COORDINATES)}')
 
         else:
@@ -85,6 +83,14 @@ if __name__ == "__main__":
         # Size of the root tip for analysis1.py 
         # 1 pixel = 0,1 mm
         tip_size = int(sys.argv[3])/0.1
+
+        # Folders with images
+        seg_files = '20210428_root_growth_cv-main/DL_use_model/data/prediction_result/'
+        orig_files = '20210428_root_growth_cv-main/DL_use_model/data/prediction_data/'
+
+        # Create correct pathnames
+        im_s = seg_files + im_s
+        im_o = orig_files + im_o
 
         if tip_size>1:
             print(f'Searching tips with diameter over: {int(tip_size)}px')
