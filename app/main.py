@@ -1,13 +1,12 @@
 import argparse
 import logging
-from sys import argv
 from os import environ
 
 from root_growth_gui import (RootGrowthGUI, pipeline_run)
 
 DEFAULTS = {
-    'INPUT': './images/',
-    'OUTPUT': './results.csv',
+    'INPUT': 'images/',
+    'OUTPUT_DATA': 'images--processed/',
     'TIP_SIZE': '10'
 }
 
@@ -15,8 +14,8 @@ class AppController():
     def __init__(self):
         self.arg_parser = argparse.ArgumentParser()
         default_in = DEFAULTS['INPUT']
-        default_out = DEFAULTS['OUTPUT']
-        default_out_img = f'{default_in.strip("/").split("/")[-1]}--processed/'
+        default_out_img = DEFAULTS['OUTPUT_DATA']
+        default_root_tip_size = DEFAULTS['TIP_SIZE']
         self.arg_parser.add_argument(
             '--cli',
             dest='use_cli',
@@ -32,23 +31,30 @@ class AppController():
         )
         self.arg_parser.add_argument(
             '--output',
-            dest='output',
-            default=default_out,
-            type=str,
-            help=f'Set path for results output. Default: {default_out}'
-        )
-        self.arg_parser.add_argument(
-            '--out-images',
             dest='outimg',
             default=default_out_img,
             type=str,
             help=f'Set directory for processed images. Default: {default_out_img}'
         )
+        self.arg_parser.add_argument(
+            '--tip-size',
+            dest='tip_size',
+            default=default_root_tip_size,
+            type=str,
+            help=f'Set minimum root tip size searched (mm). Default: {default_root_tip_size}'
+        )
 
     def run(self):
         args = self.arg_parser.parse_args()
         if args.use_cli:
-            pipeline_run(args.input, args.outimg, args.output)
+            if '../' in args.input or '../' in args.outimg:
+                logging.error('Relative paths to parent directories is not supported, please use full paths instead')
+                return
+            if args.input != DEFAULTS['INPUT'] and args.outimg == DEFAULTS['OUTPUT_DATA']:
+                outimg = f'{args.input.split("/")[-1]}--processed'
+            else:
+                outimg = args.outimg
+            pipeline_run(args.input, outimg, args.tip_size)
         else:
             RootGrowthGUI(DEFAULTS)
 

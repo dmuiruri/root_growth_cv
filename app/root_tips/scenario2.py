@@ -1,120 +1,160 @@
-# Image analysis of two images
+# Image analysisis of two images
 # Identify roots from binary images and collect found root tip informatation as location coordinates and length 
 # (= diameter) into dictionary
 # User can adjust how big are the tips they are searching.
 
-# import functions
-from root_tips.fileWITHfunctions import find_contours, processImage, draw_circles_around, add_Text, process_ML_image, extract_data_DF, compareTips
+# import functions 
+from root_tips.fileWITHfunctions import to_csv, combine_DF, color_image, color_image_v2, aux_analysis_1, aux_analysis_2, main_analysis, create_file_list, check_date, find_contours, processImage, draw_circles_around, add_Text, process_ML_image, extract_data_DF, compareTips, check_file, extract_date
 
-import logging
 import pandas as pd
 import sys
+import os
 import cv2
+import glob
+from datetime import datetime
+import numpy as np
+import logging
 
+# KOMENTORIVIESIMERKKI: 
+#  python scenario2.py hydescan1_T001_L001_2020.07.15_033029_362_DYY-prediction.jpg  hydescan1_T001_L001_2020.07.16_033029_363_DYY-prediction.jpg hydescan1_T001_L001_2020.07.16_033029_363_DYY.jpg 10  
 
-# python scenario2.py test_prediction_1.jpg test_original_1.jpg test_prediction_2.jpg test_original_2.jpg 10
+""" 
 
-# First image is processed image after root segmentation, IMAGE #1
-# Second image is original image for root tip drawing, IMAGE #1
-##im1_s = sys.argv[1]
+STEP 1: Check how many day should be analyzed
 
-# First image is processed image after root segmentation, IMAGE #2
-# Second image is original image for root tip drawing, IMAGE #2
-##im2_s = sys.argv[2]
-##im2_o = sys.argv[3]
+STEP 2 OPTION 1: 
+If time period is 2 days --> read images as unchanged 1-channel gray image and convert them to binary
+Find contours and collect root tip information into the dictionaries 
+Create dataframes for further comparison. 
+1. Check root tip diameters: diameter of combined image should be more or same.
+2. Calculate distance between centre points, if it's less than 30 then root tips from IMAGE #1 and
+combined image are same. 
+3. Create a dataframe with root tips that have been found from IMAGE #1 and combine image (IMAGE #1 and IMAGE #2) 
+Draw tips that exist in IMAGE #1 and in combined image
+Save dataframe to csv. Create image with root tips. 
 
-# Size of the root tip for analysis
-# 1 pixel = 0,1 mm
-##tip_size = int(sys.argv[4])/0.1
+STEP 3 OPTION 2:
+Time period is more than 2 days--> read first two images as unchanged 1-channel gray image and convert them to binary
+Find contours and collect root tip information into the dictionaries 
+Create dataframes for further comparison. 
+1. Check root tip diameters: diameter of combined image should be more or same.
+2. Calculate distance between centre points, if it's less than 30 then root tips from IMAGE #1 and
+combined image are same. 
+3. Create a dataframe with root tips that have been found from IMAGE #1 and combine image (IMAGE #1 and IMAGE #2) 
+Draw tips that exist in IMAGE #1 and in combined image
 
-##print(f'Searching tips with diameter over: {int(tip_size)}px')
+Repeat same actions for all image exapt for last image. Last image get tip information from first day dataframe
 
-def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, img_dir, csv_dir, img_date):
-    """
-    STEP 1:
-    Read images as unchanged 1-channel gray image and convert them to binary
+Save dataframe to csv. Create image with found root tips
+"""
 
-    STEP 2:
-    Find contours and collect root tip information into the dictionaries
-
-    STEP 3:
-    Create dataframes for further comparison.
-    1. Check root tip diameters: diameter of combined image should be more or same.
-    2. Calculate distance between centre points, if it's less than 30 then root tips from IMAGE #1 and
-    combined image are same.
-    3. Create a dataframe with root tips that have been found from IMAGE #1 and combine image (IMAGE #1 and IMAGE #2)
-
-    STEP 4:
-    Draw tips that exist in IMAGE #1 and in combined image
-
-    STEP 5:
-    Save dataframe to csv. Create image with root tips.
-    """
+def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, results_dir, date=None):
     tip_size = int(tip_size)/0.1    # 1 pixel = 0,1 mm
 
-    im1_binary, im1_gray = process_ML_image(im1_s)
-    im2_binary, im2_gray = process_ML_image(im2_s)
+    # Calculate how many days/images should be analyzed
+    period = check_date(im1_s, im2_s, im2_o)
 
-    # Create combined image from IMAGE #1 and IMAGE #2
-    combined_image_b = im1_binary + im2_binary
-    combined_image_g = im1_gray + im2_gray
+    # Period is less than 1 --> mistake
+    if period <1:
+        logging.error("Invalid dates in filenames, period is less than 1")
+        return
 
-    # Find countours from the binary images
-    im1_COORDINATES = find_contours(im1_s, im1_binary, im1_gray, tip_size)
-    combined_im_COORDINATES = find_contours('Combined image', combined_image_b, combined_image_g, tip_size)
+    # Period is 1 --> simple analysis of two images, OPTION 1
+    elif period == 1:
+        logging.debug("Analyze day #1 and day #2")
+        _, _, _, result_DF = main_analysis(im1_s, im2_s, tip_size)
+        root_tip_images = f'{results_dir}/tip_images'
+        if not os.path.exists(root_tip_images):
+            os.mkdir(root_tip_images)
+        root_tip_results = f'{results_dir}/tip_daily_changes'
+        if not os.path.exists(root_tip_results):
+            os.mkdir(root_tip_results)
+        # Create color image with found root tips
+        im_original = color_image(im2_o, result_DF)
 
-    # Create the dataframe from dictionaries
-    image1_df = pd.DataFrame.from_dict(im1_COORDINATES, orient='index', columns=['Image','(X,Y) coordinates', 'Radius','Diameter'])
-    combined_im_df = pd.DataFrame.from_dict(combined_im_COORDINATES, orient='index', columns=['Image','(X,Y) coordinates', 'Radius','Diameter'])
+        # Prepare dafaframe for writing in csv
+        result_DF = to_csv(result_DF)
 
-    # Create empty dataframe and fill it with final root ID, Day #1 root tip length, Day #1 + Day #2 root tip
-    # lenght and calculated change.
-    result_DF = pd.DataFrame(columns=['Root #ID', 'Tip length #1', '(x1,y1)', 'Radius #1', 'Tip length #2', '(x2,y2)', 'Radius #2','Difference, mm'])
+        # Save dataframe to csv-file
+        result_DF.to_csv(f'{root_tip_results}/ROOT_TIPS_{date}.csv', sep=';', index=False, float_format='%.1f')
 
-    # Process original color images for visualization
-    im2_original = processImage(im2_o)
+        # Save processed image
+        cv2.imwrite(f'{root_tip_images}/ROOT_TIPS_{date}.png', im_original)
 
-    # Compare root tips and find same roots in image #1 and combined image
-    for i in range(len(combined_im_COORDINATES )):
-        # Get #ID, tip center location and radius of combined image
-        im_id = i
-        im_crd = combined_im_COORDINATES [i][1]
-        im_r = combined_im_COORDINATES [i][2]
-        # Get #ID, tip center location and radius of IMAGE #1
-        for j in range(image1_df.shape[0]):
-            # Get coordinates and radiou from dataframe
-            (im1_crd,im1_r) = extract_data_DF(image1_df.iloc[j,:])
-            im1_id = j
-            try:
-                compareTips(im1_crd, im_crd, im1_r, im_r, im1_id, result_DF, image1_df, combined_im_df)
-            except:
-                logging.exception('ERROR! PLACEHOLDER EXCEPT-PASS TO TEST UI')
+    # Period is more than 1 day --> OPTION 2
+    else:
+        # NOTE: Currently app doesn't support calling this, there seems to be bugs
+        logging.info(f"Looking for tips from {period} days")
+        seg_files = '/'.join(im1_s.split('/')[:-1]) + '/'
+        image_list = create_file_list(im1_s, period, seg_files)
+
+        # Analyze firs pair of images and get combined image for further analysis and temporary dataframe
+        # nex_day_image is binary combine image of day #1 and #2
+        combined_image_b, combined_image_g, starting_df, temp_df = main_analysis(image_list[0], image_list[1], tip_size)
+        # Counter for image #3 and forward
+        counter = 1
+        while counter < len(image_list):
+            combined_image_b, combined_image_g, temp_df = aux_analysis_1(combined_image_b, combined_image_g, image_list[counter], tip_size, temp_df)
+            counter += 1
+            if counter == len(image_list)-1:
+                logging.info("Counter is %s, %s", counter, image_list[counter])
+                # Call the second versio of image analysis since this is last file
+                result_DF = aux_analysis_2(combined_image_b, combined_image_g, image_list[counter], tip_size, temp_df, im2_o, starting_df)
+
+                # Draw found root tips in original o
+                im_original = color_image_v2(im2_o, starting_df, result_DF)
+
+                # Prepare dafaframe for writing in csv
+                result_DF = to_csv(result_DF)
+
+                result_DF['Filename_Start'] = im1_s.split('/')[-1]
+                result_DF['Filename_Last'] = im2_s.split('/')[-1]
+
+                # Combine information from starting dataframe with result dataframe
+                result_DF = combine_DF(starting_df, result_DF)
+
+                # Save dataframe to csv-file
+                filelabel = f'{results_dir}/ROOT_TIPS'
+                logging.info('Saving to %s', results_dir)
+                result_DF.to_csv(f'{filelabel}.csv', sep=';', index=False, float_format='%.1f')
+
+                # Save processed image
+                cv2.imwrite(f'{filelabel}.png', im_original)
+                break
+            else:
                 pass
 
-    try:
-        # Draw circles around root tips
-        # Root tips from IMAGE #1 are green, root tips of combined image are red
-        color_1 = (0,255,0)
-        color_c = (0,0,255)
-        draw_circles_around(im2_original, list(result_DF['(x1,y1)']),list(result_DF['Radius #1']), color_1)
-        draw_circles_around(im2_original, list(result_DF['(x2,y2)']),list(result_DF['Radius #2']), color_c)
+    return result_DF
 
-        # Identify root tips
-        add_Text(im2_original, list(result_DF['(x2,y2)']),list(result_DF['Radius #2']), color_c)
 
-        # Reindex root tips starting from #1
-        result_DF['Root #ID'] = result_DF['Root #ID'].apply(lambda x: x + 1)
-        result_DF['Root #ID'] = result_DF['Root #ID'].astype('Int64')
+if __name__ == "__main__":
 
-        # # Save dataframe to csv-file
-        csv_out = f'{csv_dir}/{img_date}.csv'
-        result_DF.to_csv(csv_out, sep=';', index=False)
+    if len(sys.argv)==5:
+        # First image is processed image after root segmentation, IMAGE #1
+        im1_s = sys.argv[1]
 
-        # # Save processed images
-        img_out = f'{img_dir}/{img_date}.png'
-        cv2.imwrite(img_out, im2_original)
+        # First image is processed image after root segmentation, IMAGE #2
+        # Second image is original image for root tip drawing, IMAGE #2
+        im2_s = sys.argv[2]
+        im2_o = sys.argv[3]
 
-        return result_DF
-    except:
-        logging.exception('ERROR! PLACEHOLDER EXCEPT-PASS TO TEST UI')
-        return None
+        # Size of the root tip for analysis1.py 
+        # 1 pixel = 0,1 mm
+        tip_size = int(sys.argv[4])/0.1
+
+        # Folders with images
+        seg_files = '20210428_root_growth_cv-main/DL_use_model/data/prediction_result/'
+        orig_files = '20210428_root_growth_cv-main/DL_use_model/data/prediction_data/'
+
+        # Create correct pathnames
+        im1_s = seg_files + im1_s
+        im2_s = seg_files + im2_s
+        im2_o = orig_files + im2_o
+
+        if tip_size>1:
+            print(f'Searching tips with diameter over: {int(tip_size)}px')
+            main(im1_s, im2_s, im2_o, tip_size)
+        else:
+            print("Root tip size is too small")
+    else:
+        print("Check filenames or tip size")
