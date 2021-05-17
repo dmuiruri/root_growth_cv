@@ -4,7 +4,7 @@
 # User can adjust how big are the tips they are searching.
 
 # import functions 
-from root_tips.fileWITHfunctions import to_csv, combine_DF, color_image, color_image_v2, aux_analysis_1, aux_analysis_2, main_analysis, create_file_list, check_date, find_contours, processImage, draw_circles_around, add_Text, process_ML_image, extract_data_DF, compareTips, check_file, extract_date
+from root_growth_analyzer.root_tips.fileWITHfunctions import to_csv, combine_DF, color_image, color_image_v2, aux_analysis_1, aux_analysis_2, main_analysis, create_file_list, check_date, find_contours, processImage, draw_circles_around, add_Text, process_ML_image, extract_data_DF, compareTips, check_file, extract_date
 
 import pandas as pd
 import sys
@@ -63,10 +63,10 @@ def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, results_dir, date=None):
     elif period == 1:
         logging.debug("Analyze day #1 and day #2")
         _, _, _, result_DF = main_analysis(im1_s, im2_s, tip_size)
-        root_tip_images = f'{results_dir}/tip_images'
+        root_tip_images = f'{results_dir}/root_tip_growth_images'
         if not os.path.exists(root_tip_images):
             os.mkdir(root_tip_images)
-        root_tip_results = f'{results_dir}/tip_daily_changes'
+        root_tip_results = f'{results_dir}/root_tip_growth_changes'
         if not os.path.exists(root_tip_results):
             os.mkdir(root_tip_results)
         # Create color image with found root tips
@@ -76,10 +76,10 @@ def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, results_dir, date=None):
         result_DF = to_csv(result_DF)
 
         # Save dataframe to csv-file
-        result_DF.to_csv(f'{root_tip_results}/ROOT_TIPS_{date}.csv', sep=';', index=False, float_format='%.1f')
+        result_DF.to_csv(f'{root_tip_results}/ROOT_TIP_CHANGES_{date}.csv', sep=';', index=False, float_format='%.1f')
 
         # Save processed image
-        cv2.imwrite(f'{root_tip_images}/ROOT_TIPS_{date}.png', im_original)
+        cv2.imwrite(f'{root_tip_images}/ROOT_TIP_CHANGES_{date}.png', im_original)
 
     # Period is more than 1 day --> OPTION 2
     else:

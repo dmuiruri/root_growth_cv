@@ -143,7 +143,6 @@ def add_Text(image, coordinates, radius, color):
 # Check files, dates and return period of time
 def check_date(im1_s, im2_s, im2_o):
 
-    print(im1_s, im2_s, im2_o)
     # Extract path name from image filename
     seg_path = im1_s.split('.')[:-1][0]+"*.jpg"
     orig_path  = im2_o.split('.')[:-1][0]+"*.jpg"

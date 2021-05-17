@@ -2,12 +2,13 @@ import argparse
 import logging
 from os import environ
 
-from root_growth_gui import (RootGrowthGUI, pipeline_run)
+from root_growth_analyzer.root_growth_gui import (RootGrowthGUI, pipeline_run)
 
 DEFAULTS = {
     'INPUT': 'images/',
     'OUTPUT_DATA': 'images--processed/',
-    'TIP_SIZE': '10'
+    'TIP_SIZE': '10',
+    'SCENARIO': 2
 }
 
 class AppController():
@@ -16,6 +17,7 @@ class AppController():
         default_in = DEFAULTS['INPUT']
         default_out_img = DEFAULTS['OUTPUT_DATA']
         default_root_tip_size = DEFAULTS['TIP_SIZE']
+        default_scenario = DEFAULTS['SCENARIO']
         self.arg_parser.add_argument(
             '--cli',
             dest='use_cli',
@@ -43,6 +45,13 @@ class AppController():
             type=str,
             help=f'Set minimum root tip size searched (mm). Default: {default_root_tip_size}'
         )
+        self.arg_parser.add_argument(
+            '--scenario',
+            dest='scenario',
+            default=default_scenario,
+            type=int,
+            help=f'Set 1 for single image analysis or 2 for analyzing root growth from sequentially paired images. Default: {default_scenario}'
+        )
 
     def run(self):
         args = self.arg_parser.parse_args()
@@ -54,12 +63,6 @@ class AppController():
                 outimg = f'{args.input.split("/")[-1]}--processed'
             else:
                 outimg = args.outimg
-            pipeline_run(args.input, outimg, args.tip_size)
+            pipeline_run(args.input, outimg, args.tip_size, args.scenario)
         else:
             RootGrowthGUI(DEFAULTS)
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=environ.get('LOGLEVEL', 'INFO'))
-    ctrl = AppController()
-    ctrl.run()
