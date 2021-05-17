@@ -294,6 +294,8 @@ def main_analysis(im1_s, im2_s, tip_size):
     else:
         logging.info("No root tips either in image #1 or in image #2")
 
+    return None, None, None, None
+
 # Final stage, draw root tip circle in original color image
 def color_image(im2_o, result_DF):
     # Process original color images for visualization

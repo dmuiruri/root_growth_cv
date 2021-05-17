@@ -63,6 +63,8 @@ def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, results_dir, date=None):
     elif period == 1:
         logging.debug("Analyze day #1 and day #2")
         _, _, _, result_DF = main_analysis(im1_s, im2_s, tip_size)
+        if result_DF is None:
+            return
         root_tip_images = f'{results_dir}/root_tip_growth_images'
         if not os.path.exists(root_tip_images):
             os.mkdir(root_tip_images)
