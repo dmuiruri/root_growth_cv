@@ -57,14 +57,14 @@ def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, results_dir, date=None):
     # Period is less than 1 --> mistake
     if period <1:
         logging.error("Invalid dates in filenames, period is less than 1")
-        return
+        return None
 
     # Period is 1 --> simple analysis of two images, OPTION 1
     elif period == 1:
         logging.debug("Analyze day #1 and day #2")
         _, _, _, result_DF = main_analysis(im1_s, im2_s, tip_size)
         if result_DF is None:
-            return
+            return None
         root_tip_images = f'{results_dir}/root_tip_growth_images'
         if not os.path.exists(root_tip_images):
             os.mkdir(root_tip_images)

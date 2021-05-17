@@ -98,7 +98,7 @@ def pipeline_run(input_path, output_folder, root_tip_size, scenario, progress=No
                     root_tip_dir,
                     date
                 )
-                av = df['Difference, mm'].mean()
+                av = df['Difference, mm'].mean() if df is not None else 0
                 aggr_results += f'{date};{av}\n'
 
             prev_pred_path = img_pred_path
