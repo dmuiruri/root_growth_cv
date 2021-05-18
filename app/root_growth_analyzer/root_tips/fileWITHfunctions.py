@@ -2,10 +2,13 @@
 
 import cv2
 import math
+import re
+
 from datetime import datetime, timedelta
 import glob
 import numpy as np
 import pandas as pd
+import logging
 
 
 """ COMMON FUNCTIONS FOR BOTH SCENARIOS """
@@ -149,13 +152,15 @@ def check_date(im1_s, im2_s, im2_o):
 
     # Check if files exist and calculate timedelta 
     if check_file(im1_s.split('/')[-1],seg_file_list) and check_file(im2_s.split('/')[-1],seg_file_list)  and check_file(im2_o.split('/')[-1], orig_file_list):
-        print("All 3 files exist")
+        logging.debug("All 3 files exist")
         # Calculate time period
         start_day = extract_date(im1_s)
         end_day = extract_date(im2_s)
+        #start_day = re.search('20[0-9][0-9]\.[0-1][0-9]\.[0-3][0-9]', im1_s).group(0)
+        #end_day = re.search('20[0-9][0-9]\.[0-1][0-9]\.[0-3][0-9]', im1_s).group(0)
         timeperiod = (end_day-start_day).days
     else:
-        print("Some files are missing")
+        logging.error("Some files are missing")
         timeperiod = 0
     return timeperiod
 
@@ -170,7 +175,8 @@ def check_file(f, f_list):
 
 # Create datetime object to calculate period of time
 def extract_date(f):
-    date = f.split('_')[9]
+    #date = f.split('_')[9]
+    date = re.search('20[0-9][0-9]\.[0-1][0-9]\.[0-3][0-9]', f).group(0)
     date_DT = datetime.strptime(date, '%Y.%m.%d')
     return date_DT
 
@@ -284,9 +290,11 @@ def main_analysis(im1_s, im2_s, tip_size):
             image1_df, result_DF = create_root_tip_DF (im1_COORDINATES, combined_im_COORDINATES)
             return combined_image_b, combined_image_g, image1_df, result_DF
         else:
-            print("No root tips of given size")
+            logging.info("No root tips of given size")
     else:
-        print("No root tips either in image #1 or in image #2")
+        logging.info("No root tips either in image #1 or in image #2")
+
+    return None, None, None, None
 
 # Final stage, draw root tip circle in original color image
 def color_image(im2_o, result_DF):
@@ -327,10 +335,10 @@ def create_file_list(im1_s, period, seg_files):
 # Create days list based on period of time and filename of image #1
 def create_days(im1_s, period):
     days_list = []
-    print("period of time", period)
+    logging.info("period of time %s", period)
     start_day = extract_date(im1_s)
     days_list.append(start_day)
-    print("First day: ", start_day)
+    logging.info("First day: %s", start_day)
     next_day = start_day
     while period > 0:
         next_day = next_day + timedelta(days=1)
@@ -401,9 +409,9 @@ def aux_analysis_1(im1_binary, im1_gray, im2_s, tip_size, temp_df):
                     (im1_crd,im1_r) = extract_data_temp_DF(temp_df.iloc[j,:])
                     compareTips(im1_crd, combined_crd, im1_r, combined_r, j, result_DF)
         else:
-            print("No root tips of given size in the image, try shorter period of time")
+            logging.info("No root tips of given size in the image, try shorter period of time")
     else:
-        print("No root tips in the image, try shorter period of time")
+        logging.info("No root tips in the image, try shorter period of time")
 
     return combined_image_b, combined_image_g, result_DF
 
@@ -444,21 +452,20 @@ def aux_analysis_2(im1_binary, im1_gray, im2_s, tip_size, temp_df, im2_o, starti
                     compareTips(im1_crd, combined_crd, im1_r, combined_r, j, result_DF)
             return result_DF
         else:
-            print("No root tips of given size in the image, try shorter period of time")
+            logging.info("No root tips of given size in the image, try shorter period of time")
     else:
-        print("No root tips in the image, try shorter period of time")
+        logging.info("No root tips in the image, try shorter period of time")
 
 
 # Combine two dataframe 
 def combine_DF(starting_df, result_DF):
-
     # Reindex starting_df from #1 
     index_list = range(1,result_DF.shape[0]+1)
-    starting_df['Root #ID'] = index_list
+    starting_df['Root #ID'] = pd.Series(index_list, dtype='Int64')
+    #starting_df.fillna(0)
 
     # Select only needed columns
     result_DF = result_DF[['Root #ID','Tip length #2, mm', '(x2,y2)', 'Radius #2','Filename_Start', 'Filename_Last']]
-
     # Merge dataframes by Root ID
     result_DF = pd.merge(starting_df, result_DF, on='Root #ID', how='outer')
 
@@ -468,27 +475,3 @@ def combine_DF(starting_df, result_DF):
 
     return result_DF[['Filename_Start','Filename_Last', 'Root #ID','Difference, mm']]
 
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        

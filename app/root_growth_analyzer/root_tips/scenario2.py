@@ -4,14 +4,16 @@
 # User can adjust how big are the tips they are searching.
 
 # import functions 
-from fileWITHfunctions import to_csv, combine_DF, color_image, color_image_v2, aux_analysis_1, aux_analysis_2, main_analysis, create_file_list, check_date, find_contours, processImage, draw_circles_around, add_Text, process_ML_image, extract_data_DF, compareTips, check_file, extract_date
+from root_growth_analyzer.root_tips.fileWITHfunctions import to_csv, combine_DF, color_image, color_image_v2, aux_analysis_1, aux_analysis_2, main_analysis, create_file_list, check_date, find_contours, processImage, draw_circles_around, add_Text, process_ML_image, extract_data_DF, compareTips, check_file, extract_date
 
 import pandas as pd
 import sys
+import os
 import cv2
 import glob
 from datetime import datetime
 import numpy as np
+import logging
 
 # KOMENTORIVIESIMERKKI: 
 #  python scenario2.py hydescan1_T001_L001_2020.07.15_033029_362_DYY-prediction.jpg  hydescan1_T001_L001_2020.07.16_033029_363_DYY-prediction.jpg hydescan1_T001_L001_2020.07.16_033029_363_DYY.jpg 10  
@@ -46,20 +48,29 @@ Repeat same actions for all image exapt for last image. Last image get tip infor
 Save dataframe to csv. Create image with found root tips
 """
 
-def main(im1_s, im2_s, im2_o, tip_size):
-    
+def root_tip_analysis(im1_s, im2_s, im2_o, tip_size, results_dir, date=None):
+    tip_size = int(tip_size)/0.1    # 1 pixel = 0,1 mm
+
     # Calculate how many days/images should be analyzed
     period = check_date(im1_s, im2_s, im2_o)
 
     # Period is less than 1 --> mistake
     if period <1:
-        print("Check filenames or order")
+        logging.error("Invalid dates in filenames, period is less than 1")
+        return None
 
     # Period is 1 --> simple analysis of two images, OPTION 1
     elif period == 1:
-        print("Analyze day #1 and day #2")
+        logging.debug("Analyze day #1 and day #2")
         _, _, _, result_DF = main_analysis(im1_s, im2_s, tip_size)
-        
+        if result_DF is None:
+            return None
+        root_tip_images = f'{results_dir}/root_tip_growth_images'
+        if not os.path.exists(root_tip_images):
+            os.mkdir(root_tip_images)
+        root_tip_results = f'{results_dir}/root_tip_growth_changes'
+        if not os.path.exists(root_tip_results):
+            os.mkdir(root_tip_results)
         # Create color image with found root tips
         im_original = color_image(im2_o, result_DF)
 
@@ -67,25 +78,28 @@ def main(im1_s, im2_s, im2_o, tip_size):
         result_DF = to_csv(result_DF)
 
         # Save dataframe to csv-file
-        result_DF.to_csv('OPTION 1_TEST.csv', sep=';', index=False, float_format='%.1f')
+        result_DF.to_csv(f'{root_tip_results}/ROOT_TIP_CHANGES_{date}.csv', sep=';', index=False, float_format='%.1f')
 
         # Save processed image
-        cv2.imwrite("OPTION 1_TEST.png", im_original)
+        cv2.imwrite(f'{root_tip_images}/ROOT_TIP_CHANGES_{date}.png', im_original)
 
     # Period is more than 1 day --> OPTION 2
     else:
-        print(f"Looking for tips from {period} days")
+        # NOTE: Currently app doesn't support calling this, there seems to be bugs
+        logging.info(f"Looking for tips from {period} days")
+        seg_files = '/'.join(im1_s.split('/')[:-1]) + '/'
         image_list = create_file_list(im1_s, period, seg_files)
+
         # Analyze firs pair of images and get combined image for further analysis and temporary dataframe
         # nex_day_image is binary combine image of day #1 and #2
         combined_image_b, combined_image_g, starting_df, temp_df = main_analysis(image_list[0], image_list[1], tip_size)
         # Counter for image #3 and forward
-        counter = 2
+        counter = 1
         while counter < len(image_list):
             combined_image_b, combined_image_g, temp_df = aux_analysis_1(combined_image_b, combined_image_g, image_list[counter], tip_size, temp_df)
             counter += 1
             if counter == len(image_list)-1:
-                print("Counter is ", counter, image_list[counter])
+                logging.info("Counter is %s, %s", counter, image_list[counter])
                 # Call the second versio of image analysis since this is last file
                 result_DF = aux_analysis_2(combined_image_b, combined_image_g, image_list[counter], tip_size, temp_df, im2_o, starting_df)
 
@@ -94,21 +108,26 @@ def main(im1_s, im2_s, im2_o, tip_size):
 
                 # Prepare dafaframe for writing in csv
                 result_DF = to_csv(result_DF)
-                
-                result_DF['Filename_Start'] = im1_s
-                result_DF['Filename_Last'] = im2_s
+
+                result_DF['Filename_Start'] = im1_s.split('/')[-1]
+                result_DF['Filename_Last'] = im2_s.split('/')[-1]
 
                 # Combine information from starting dataframe with result dataframe
                 result_DF = combine_DF(starting_df, result_DF)
 
                 # Save dataframe to csv-file
-                result_DF.to_csv('OPTION 2_TEST.csv', sep=';', index=False, float_format='%.1f')
+                filelabel = f'{results_dir}/ROOT_TIPS'
+                logging.info('Saving to %s', results_dir)
+                result_DF.to_csv(f'{filelabel}.csv', sep=';', index=False, float_format='%.1f')
 
                 # Save processed image
-                cv2.imwrite("OPTION 2_TEST.png", im_original)
+                cv2.imwrite(f'{filelabel}.png', im_original)
                 break
             else:
                 pass
+
+    return result_DF
+
 
 if __name__ == "__main__":
 

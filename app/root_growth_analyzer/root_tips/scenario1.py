@@ -4,12 +4,14 @@
 # User can adjust how big are the tips they are searching. 
 
 # import functions 
-from fileWITHfunctions import find_contours, processImage, draw_circles_around, add_Text, process_ML_image
+from root_growth_analyzer.root_tips.fileWITHfunctions import find_contours, processImage, draw_circles_around, add_Text, process_ML_image
 
 import pandas as pd
 import numpy as np
 import sys
+import os
 import cv2
+import logging
 
 """ 
 STEP 1:
@@ -24,7 +26,9 @@ Read original color image, resize it and draw found tips
 STEP 4: 
 Create dataframe and save it to csv-file
 """
-def main(im_s, im_o, tip_size):
+def single_image_analysis(im_s, im_o, tip_size, results_dir, date):
+
+    tip_size = int(tip_size)/0.1
 
     # create binary image and grayscale image to find contours
     im_binary, im_gray = process_ML_image(im_s)
@@ -53,26 +57,32 @@ def main(im_s, im_o, tip_size):
             # Numerate root tips
             add_Text(im_original, list(image_df['Location (x,y)']), list(image_df['Radius']), color)
 
-            # Generate csv-file name
-            csv_file = 'OPTION 0_TEST.csv'
+            root_tip_images = f'{results_dir}/root_tip_images'
+            if not os.path.exists(root_tip_images):
+                os.mkdir(root_tip_images)
+            root_tip_results = f'{results_dir}/root_tip_data'
+            if not os.path.exists(root_tip_results):
+                os.mkdir(root_tip_results)
+
 
             # Reindex dataframe 
             index_list = range(1,len(im_COORDINATES)+1)
             image_df['ImageID']=index_list
             image_df['Tip length, mm']=image_df['Diameter']*0.1
-            image_df[['Image','Location (x,y)', 'ImageID', 'Tip length, mm']].to_csv(csv_file, sep=';', index=False, float_format='%.1f')
+            image_df[['Image','Location (x,y)', 'ImageID', 'Tip length, mm']].to_csv(f'{root_tip_results}/ROOT_TIPS_{date}.csv', sep=';', index=False, float_format='%.1f')
 
 
-            print(image_df)
+            #print(image_df)
 
 
             # Save processed image
-            cv2.imwrite('OPTION 0_TEST.png', im_original)
-            print(f'Image with identified root tips is created, number of roots: {len(im_COORDINATES)}')
+            cv2.imwrite(f'{root_tip_images}/ROOT_TIP_CHANGES_{date}.png', im_original)
+            logging.info('Image with identified root tips is created (%s), number of roots: %s', date, len(im_COORDINATES))
         else:
-            print("No root tips")
+            logging.info("No root tips")
     else:
-        print("Empty image, no root tips")
+        logging.info("Empty image, no root tips")
+
 
 if __name__ == "__main__":
 
