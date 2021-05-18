@@ -11,7 +11,7 @@ import logging
 from torchvision.transforms import functional as F
 
 # Import model
-from root_growth_analyzer.DL_model.model import SegNet
+from DL_model.model import SegNet
 
 # Set thershold
 #threshold=0.9 # threshold prediction
@@ -51,7 +51,7 @@ class Normalize(object):
 class DLModel():
 
     threshold = 0.9 # threshold prediction
-    weights_path = f'root_growth_analyzer/DL_model/trained_segnet_weights.pt' # Path to trained model weights
+    weights_path = f'DL_model/trained_segnet_weights.pt' # Path to trained model weights
 
     # Pad width and size to be dividable by 16
     def pad_256(self, img_path):
@@ -125,7 +125,7 @@ class DLModel():
         logging.info("{} generated!".format(new_file_name))
 
     # The main
-    def apply_dl_model(self, read_dir, result_dir, progress=None, prog_step=0, exit_flag=None):
+    def apply_dl_model(self, read_dir, result_dir, exit_flag=None):
         read_dir = Path(read_dir)
         # If available, use GPU, otherwise use CPU
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -147,5 +147,3 @@ class DLModel():
                 logging.info("Received exit signal, terminating run")
                 return
             self.predict_gen(model, img_path, self.threshold, device, result_dir)
-            if progress:
-                progress.step(prog_step)
